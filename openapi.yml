@@ -1,0 +1,440 @@
+openapi: 3.0.3
+info:
+  title: IO Sign - Issuer API
+  version: 0.1.0
+servers:
+  - url: https://api.io.pagopa.it/api/v1/sign
+    description: Production
+security:
+  - SubscriptionKey: []
+paths:
+
+  /subscription-status:
+    post:
+      operationId: getSubscriptionStatus
+      summary: Get citizen subscription status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fiscalCode:
+                  $ref: "#/components/schemas/FiscalCode"
+      responses:
+        "200":
+          description: Subscription status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subscribed:
+                    type: boolean
+                  
+
+  /products:
+    post:
+      operationId: createProduct
+      summary: Create a Product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      tags:
+        - product
+      responses:
+        "201":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetailView"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /products/{productId}:
+    get:
+      operationId: getProductById
+      summary: Get a Product by Id
+      parameters:
+        - in: path
+          name: productId
+          schema:
+            type: string
+            format: ulid
+          required: true
+      tags:
+        - product
+      responses:
+        "200":
+          description: The product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductDetailView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /signature-requests:
+    post:
+      operationId: requestSignature
+      summary: Request a Signature (creating a Signature Request)
+      tags:
+        - signature request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestSignatureBody"
+      responses:
+        "201":
+          description: RequestSignature created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignatureRequestDetailView"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProblemJson"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /signature-requests/{signatureRequestId}:
+    get:
+      operationId: getSignatureRequestById
+      summary: Get a Signature Request By Id
+      tags:
+        - signature request
+      parameters:
+        - in: path
+          name: signatureRequestId
+          schema:
+            $ref: "#/components/schemas/SignatureRequestId"
+          required: true
+      responses:
+        "200":
+          description: The Signature Request detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignatureRequestDetailView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /signature-requests/{signatureRequestId}/status:
+    put:
+      operationId: setSignatureRequestStatus
+      summary: Change the status of a signature request
+      tags:
+        - signature request
+      parameters:
+        - in: path
+          name: signatureRequestId
+          schema:
+            $ref: "#/components/schemas/SignatureRequestId"
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignatureRequestStatus"
+      responses:
+        "204":
+          description: Signature status successfully changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SignatureRequestDetailView"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Unexpected"
+  /signature-requests/{signatureRequestId}/documents/{documentId}/upload-token:
+    get:
+      operationId: getDocumentUploadToken
+      summary: Get the upload link for the specified document
+      tags:
+        - signature request
+      parameters:
+        - in: path
+          name: signatureRequestId
+          schema:
+            $ref: "#/components/schemas/SignatureRequestId"
+          required: true
+        - in: path
+          name: documentId
+          schema:
+            type: string
+            format: ulid
+          required: true
+      responses:
+        "200":
+          description: "The upload token of the specified document"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadToken"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        default:
+          $ref: "#/components/responses/Unexpected"
+
+components:
+  securitySchemes:
+    SubscriptionKey:
+      type: apiKey
+      name: Ocp-Apim-Subscription-Key
+      in: header
+      description: The API key obtained through the developer portal
+  responses:
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemJson"
+    BadRequest:
+      description: Validation error on body
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemJson"
+    Forbidden:
+      description: You don't have enough privileges to perform this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemJson"
+    Unexpected:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemJson"
+  schemas:
+    UploadToken:
+      type: object
+      properties:
+        documentId:
+          type: string
+          format: ulid
+        token:
+          type: string
+          format: url
+      required:
+        - documentId
+        - token
+
+    ProblemJson:
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+          description: |-
+            An absolute URI that identifies the problem type. When dereferenced,
+            it SHOULD provide human-readable documentation for the problem type
+            (e.g., using HTML).
+          default: about:blank
+          example: https://example.com/problem/constraint-violation
+        title:
+          type: string
+          description: >-
+            A short, summary of the problem type. Written in english and
+            readable
+
+            for engineers (usually not suited for non technical stakeholders and
+
+            not localized); example: Service Unavailable
+        status:
+          type: integer
+          format: int32
+          description: >-
+            The HTTP status code generated by the origin server for this
+            occurrence of the problem.
+          minimum: 100
+          maximum: 600
+          exclusiveMaximum: true
+          example: 200
+        detail:
+          type: string
+          description: |-
+            A human readable explanation specific to this occurrence of the
+            problem.
+          example: There was an error processing the request
+        instance:
+          type: string
+          format: uri
+          description: >-
+            An absolute URI that identifies the specific occurrence of the
+            problem. It may or may not yield further information if
+            dereferenced.
+      required:
+        - title
+        - status
+        - detail
+    FiscalCode:
+      type: string
+      description: User's fiscal code.
+      format: FiscalCode
+      x-import: "@pagopa/ts-commons/lib/strings"
+      example: SPNDNL80R13C555X
+    Clause:
+      type: object
+      properties:
+        title:
+          type: string
+        required:
+          type: boolean
+      required:
+        - title
+        - required
+    DocumentMetadata:
+      type: object
+      properties:
+        title:
+          type: string
+        clauses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Clause"
+          minItems: 1
+          uniqueItems: true
+      required:
+        - title
+        - clauses
+    Document:
+      allOf:
+        - type: object
+          properties:
+            id:
+              type: string
+              format: ulid
+            url:
+              type: string
+              format: uri
+          required:
+            - id
+        - $ref: "#/components/schemas/DocumentMetadata"
+    ProductId:
+      type: string
+      format: ulid
+    Timestamp:
+      type: string
+      format: UTCISODateFromString
+      description: A date-time field in ISO-8601 format and UTC timezone.
+      x-import: "@pagopa/ts-commons/lib/dates"
+      example: "2018-10-13T00:00:00.000Z"
+    CreateProductBody:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentMetadata"
+          minItems: 1
+          uniqueItems: true
+      required:
+        - documents
+    ProductDetailView:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/ProductId"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentMetadata"
+      required:
+        - id
+        - documents
+
+    QrCodeUrl:
+      type: string
+      format: url
+      minLength: 1
+
+    RequestSignatureBody:
+      type: object
+      properties:
+        productId:
+          $ref: "#/components/schemas/ProductId"
+        fiscalCode:
+          $ref: "#/components/schemas/FiscalCode"
+        expiresAt:
+          $ref: "#/components/schemas/Timestamp"
+        enableIOMessage:
+          type: boolean
+          default: false
+      required:
+        - productId
+        - fiscalCode
+
+    SignatureRequestStatus:
+      type: string
+      x-extensible-enum:
+        - DRAFT
+        - WAIT_FOR_ISSUER
+        - READY
+        - WAIT_FOR_SIGNATURE
+        - SIGNED
+      description: >
+        Signature request status:
+         * `DRAFT` - The signature request has been created but not all documents have been uploaded yet.
+         * `WAIT_FOR_ISSUER` - All documents have been uploaded but the ISSUER has not yet marked the signature request as READY.
+         * `READY` - The signature request is ready for processing. In this phase the documents will be analyzed and prepared for sending to the USER.
+         * `WAIT_FOR_SIGNATURE` - The signature request has been sent to the user and is awaiting signature
+         * `SIGNED` - The signature request was successfully signed.
+
+    SignatureRequestDetailView:
+      type: object
+      properties:
+        id:
+          type: string
+          format: ulid
+        status:
+          $ref: "#/components/schemas/SignatureRequestStatus"
+        productId:
+          $ref: "#/components/schemas/ProductId"
+        expiresAt:
+          $ref: "#/components/schemas/Timestamp"
+        qrCodeUrl:
+          $ref: "#/components/schemas/QrCodeUrl"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Document"
+      required:
+        - id
+        - productId
+        - qrCodeUrl
+        - documents
+    SignatureRequestId:
+      type: string
+      format: ulid
+      minLength: 1

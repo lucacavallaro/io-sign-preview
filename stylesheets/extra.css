@@ -1,0 +1,8 @@
+:root {
+  --io-blue: #06c;
+}
+
+[data-md-color-scheme="io"] {
+  --md-primary-fg-color: var(--io-blue);
+  --md-accent-fg-color: var(--io-blue);
+}
